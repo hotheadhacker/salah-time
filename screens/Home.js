@@ -9,6 +9,7 @@ export default Home = () => {
     const [salahJSON, setSalahJSON] = useState({});
     const [activeSalah, setActiveSalah] = useState('qiyam');
     const [dt, setDt] = useState(new Date().toLocaleTimeString());
+    const [reandomNumber, setRandomNo] = useState(0);
     
     // get current date
     var today = new Date();
@@ -32,7 +33,7 @@ export default Home = () => {
               var maghribTime = moment(json?.times?.Maghrib, 'h:mm a');
               var ishaTime = moment(json?.times?.Isha, 'h:mm a');
               var qiyamTime = moment(json?.times?.Qiyam, 'h:mm a');
-
+              var boundaryTime = moment('11:59 PM', 'h:mm a');
               var currentTime = moment(currentTwelveHr, 'h:mm a');
 
               if(fajrTime.isBefore(currentTime) && currentTime.isBefore(sunriseTime))
@@ -50,8 +51,8 @@ export default Home = () => {
               if(maghribTime.isBefore(currentTime) && currentTime.isBefore(ishaTime))
                 setActiveSalah('maghrib');
 
-              if(ishaTime.isBefore(currentTime) && currentTime.isBefore(qiyamTime))
-                setActiveSalah('fajr');
+              if(ishaTime.isBefore(currentTime) && currentTime.isBefore(boundaryTime)) // special boundry condition
+                setActiveSalah('isha');
 
                 console.log(activeSalah);
                 // not sure about below condition
@@ -68,11 +69,13 @@ export default Home = () => {
         
     // call api
       useEffect(() => {
+        // set random number for ayah
+        setRandomNo(getRandomArbitrary());
         getSalahApiAsync();
         console.log(salahJSON);
       }, []);
 
-      
+    
 
       // make loading screen to show verses of al - quran
       let versesOfQuran = [
@@ -117,7 +120,6 @@ export default Home = () => {
     }, []);
       
 
-    
 
     return(
         <View>
@@ -171,7 +173,7 @@ export default Home = () => {
             </View> : <View style={{}}>
                 {/* <Image style={{textAlign: 'center'}} source={require('../assets/loader/Stopwatch.gif')} /> */}
                 <Text style={{textAlign: 'center', marginTop: 200}}>Salah Time Loading...</Text>
-                <Text style={{textAlign: 'center', marginTop: 50, fontSize: 25}}>{versesOfQuran[getRandomArbitrary()]}</Text>
+                <Text style={{textAlign: 'center', marginTop: 50, fontSize: 25}}>{versesOfQuran[reandomNumber]}</Text>
             </View>
             }
         </View>
