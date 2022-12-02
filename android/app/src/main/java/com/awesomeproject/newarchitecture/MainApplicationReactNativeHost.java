@@ -1,4 +1,4 @@
-package com.awesomeproject.newarchitecture;
+package dev.isalman.salahtime.newarchitecture;
 
 import android.app.Application;
 import androidx.annotation.NonNull;
@@ -19,9 +19,9 @@ import com.facebook.react.fabric.CoreComponentsRegistry;
 import com.facebook.react.fabric.FabricJSIModuleProvider;
 import com.facebook.react.fabric.ReactNativeConfig;
 import com.facebook.react.uimanager.ViewManagerRegistry;
-import com.awesomeproject.BuildConfig;
-import com.awesomeproject.newarchitecture.components.MainComponentsRegistry;
-import com.awesomeproject.newarchitecture.modules.MainApplicationTurboModuleManagerDelegate;
+import dev.isalman.salahtime.BuildConfig;
+import dev.isalman.salahtime.newarchitecture.components.MainComponentsRegistry;
+import dev.isalman.salahtime.newarchitecture.modules.MainApplicationTurboModuleManagerDelegate;
 import java.util.ArrayList;
 import java.util.List;
 
