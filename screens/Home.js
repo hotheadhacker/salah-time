@@ -32,7 +32,6 @@ export default Home = () => {
               var maghribTime = moment(json?.times?.Maghrib, 'h:mm a');
               var ishaTime = moment(json?.times?.Isha, 'h:mm a');
               var qiyamTime = moment(json?.times?.Qiyam, 'h:mm a');
-              currentTwelveHr = "5:52 PM";
 
               var currentTime = moment(currentTwelveHr, 'h:mm a');
 
