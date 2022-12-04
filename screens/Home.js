@@ -1,8 +1,11 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Button, TouchableOpacity, TextInput, FlatList, AsyncStorage } from 'react-native';
 import React, {useState, useEffect} from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
 import FA5 from 'react-native-vector-icons/FontAwesome5';
 import moment from 'moment';
+import Modal from "react-native-modal";
+import Toast from 'react-native-toast-message';
+
 
 export default Home = () => {
     const [loading, setLoading] = useState(true);
@@ -10,19 +13,28 @@ export default Home = () => {
     const [activeSalah, setActiveSalah] = useState('qiyam');
     const [dt, setDt] = useState(new Date().toLocaleTimeString());
     const [reandomNumber, setRandomNo] = useState(0);
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [salahLocation, setSalahLocation] = useState(null);
+    const [geoEncodedData, setGeoEncodedData] = useState(null);
     
     // get current date
     var today = new Date();
     var currentTwelveHr = formatAMPM(today);
 
     
-    const getSalahApiAsync = async () => {
+    
+    const getSalahApiAsync = async (manualCoordinates=false) => {
             try {
+                var url = 'https://salah.com/get?lt=34.071486870226444&lg=74.81112963457205'; // lalchowk :)
+                if(manualCoordinates){
+                    console.log(manualCoordinates);
+                    url = `https://salah.com/get?lt=${manualCoordinates.lat}&lg=${manualCoordinates.lng}`
+                }
               const response = await fetch(
-                'https://salah.com/get?lt=34.0837&lg=74.7973'
+                url
               );
               const json = await response.json();
-            //   console.log(json);
+              console.log(json);
               setLoading(false)
               setSalahJSON(json);
               // make comparisions
@@ -56,23 +68,87 @@ export default Home = () => {
 
                 console.log(activeSalah);
                 // not sure about below condition
-            //   if(qiyamTime.isBefore(currentTime) && currentTime.isBefore(sunriseTime))
-            //     setActiveSalah('fajr');
-            //   console.log(salahTime.isBefore(currentTime));
-            //   console.log(salahTime.toDate());
-            //   console.log(currentTime.toDate());
+                //   if(qiyamTime.isBefore(currentTime) && currentTime.isBefore(sunriseTime))
+                //   setActiveSalah('fajr');
+                //   console.log(salahTime.isBefore(currentTime));
+                //   console.log(salahTime.toDate());
+                //   console.log(currentTime.toDate());
               return json;
             } catch (error) {
+                // todo: add a screen on app UI that shows no internet connection!
                 console.log(error);
             }
         };
+        // make geo encoded places data
+        const getGeoEncodedApiAsync = async () => {
+            try {
+              const response = await fetch(
+                'http://api.positionstack.com/v1/forward?access_key='+process.env.REACT_APP_GEO_CODE_API_KEY+'&limit=10&output=json&query='+salahLocation
+              );
+              const json = await response.json();
+              let locationFetchData = json?.data ?? null;
+            //   console.log(json?.data[0]?.country ?? {data: 'not found'});
+              setGeoEncodedData(locationFetchData);
+              return json;
+            } catch (error) {
+                // todo: add a screen on app UI that shows no internet connection!
+                alert('Error: ' + JSON.stringify(error));
+                console.log(error);
+            }
+        };
+    
+
+        // manage text input
+        const onChangeSalahLocation = (loc) =>{
+            setSalahLocation(loc);
+            getGeoEncodedApiAsync();
+            
+        }
+        // manage item
+        const Item = ({ title }) => (
+            <View style={{paddingBottom: 10}}>
+              <Text style={{fontSize: 20}}><Icon name="location-outline" size={20} /> {title}</Text>
+            </View>
+          );
+        // manage flatlist render
+        const renderItem = ({ item }) => (
+            <TouchableOpacity onPress={() => { handleDynamicTapedLocation({lat: item?.latitude, lng: item?.longitude, loc: item?.label})}}>
+                <Item title={item?.label} />
+            </TouchableOpacity>
+          );
+
+        // save user selected/tapped location, fetch new salah data and return to main screen
+
+        const handleDynamicTapedLocation = (coordinates) => {
+            console.log(coordinates);
+            if(coordinates.lat && coordinates.lng){
+                getSalahApiAsync(coordinates)
+                AsyncStorage.setItem('manualCoordinates',JSON.stringify(coordinates)); //! tried to use community version but got npm dependancy err
+                setModalVisible(!isModalVisible)
+                // add a toast message
+                showToast('success', 'Updating...', 'Your new location is updating 🥳')
+            }
+        }
+        
         
     // call api
       useEffect(() => {
         // set random number for ayah
         setRandomNo(getRandomArbitrary());
-        getSalahApiAsync();
-        console.log(salahJSON);
+        // check if we have previous user entered coordinates
+        (async () =>{
+            let userCoordinates = await AsyncStorage.getItem('manualCoordinates');  
+            let parsed = JSON.parse(userCoordinates);
+            console.log('From AsyncStorage: ' + userCoordinates);
+            if(parsed)
+                getSalahApiAsync(parsed);
+            else
+                getSalahApiAsync();
+
+        })();
+        // getSalahApiAsync();
+        // getGeoEncodedApiAsync();
+        // console.log(salahJSON);
       }, []);
 
     
@@ -118,7 +194,22 @@ export default Home = () => {
     
         return () => clearInterval(secTimer);
     }, []);
-      
+    
+    // let update location feature
+    // toggle modal
+    const toggleModal = () => {
+        setModalVisible(!isModalVisible);
+      };
+
+      // toast
+      const showToast = (type, hero, msg) => {
+        Toast.show({
+          type: type,
+          text1: hero,
+          text2: msg
+        });
+      }
+
 
 
     return(
@@ -128,7 +219,10 @@ export default Home = () => {
                 <Text style={{textAlign: 'center', fontSize: 30}}>Today</Text>
                 <View style={{flexDirection: 'row', justifyContent:'space-between', margin: 5}}>
                     <Text style={{fontSize: 15}}>{today.toDateString()}</Text>
-                    <Text style={{fontSize: 12}}><Icon name="location-outline" size={10} color="#4F8EF7" />{salahJSON?.location}</Text>
+                    <TouchableOpacity onPress={toggleModal}>
+                        <Text style={{fontSize: 16}}><Icon name="location-outline" size={10} color="#4F8EF7" />{salahJSON?.location}</Text>
+                        <Text style={{textAlign: 'center', fontSize: 8, color: 'green', fontStyle: 'italic'}}>Tap to change your location</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={{flexDirection: 'row', justifyContent:'center', marginTop: 40, marginBottom: 15}}>
@@ -176,6 +270,40 @@ export default Home = () => {
                 <Text style={{textAlign: 'center', marginTop: 50, fontSize: 25}}>{versesOfQuran[reandomNumber]}</Text>
             </View>
             }
+
+            {/* modal for location change */}
+            <Modal isVisible={isModalVisible}>
+                <View style={{ flex: 1, backgroundColor: 'white'}}>
+                <Text style={{textAlign: 'center', fontSize: 18, color: 'green', margin: 10}}>Enter your location</Text>
+                <TextInput
+                    style={{margin: 10,
+                    color: 'green',
+                    backgroundColor: "beige",
+                    borderWidth: 2,
+                    paddingLeft: 10,
+                    borderColor: 'green',
+                    borderRadius: 20,
+                  }}
+                    onChangeText={onChangeSalahLocation}
+                    value={salahLocation}
+                    placeholder="Type your location"
+                />
+                <View>
+                    <FlatList
+                        data={geoEncodedData}
+                        renderItem={renderItem}
+                        keyExtractor={(item, index) => 'key'+index}
+                    />
+                </View>
+                
+                {/* <Button title="Go Back" onPress={toggleModal} /> */}
+                <TouchableOpacity onPress={toggleModal} style={{margin: 10}}>
+                  <Text style={{textAlign: 'center', color:'green'}}><Icon name="arrow-back" /> Go Back</Text>
+                </TouchableOpacity>
+                </View>
+            </Modal>
+
+            <Toast />
         </View>
     );
 }
